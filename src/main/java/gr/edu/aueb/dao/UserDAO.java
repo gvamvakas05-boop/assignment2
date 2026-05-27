@@ -10,13 +10,13 @@ import gr.edu.aueb.db.DBconnection;
 import mainpackage.Users; 
 import mainpackage.Professors;
 
+// Κλάση DAO για τη διαχείριση των χρηστών και των λειτουργιών σύνδεσης και ανάκτησης από τη βάση δεδομένων.
 public class UserDAO {
 
-    /**
-     * Authenticates a user based on username and password (Fulfills 3.4.1)
-     */
+    // Μέθοδος αυθεντικοποίησης για τη σύνδεση της γραμματείας (Απαίτηση 3.4.1).
     public Users authenticate(String username, String password) {
-        String query = "SELECT * FROM users WHERE username = ? AND password = ?";
+        // Ανάκτηση του ρόλου από τη βάση για τον έλεγχο δικαιωμάτων πρόσβασης στο dashboard της γραμματείας
+        String query = "SELECT username, name, surname, department, role FROM users WHERE username = ? AND password = ?";
         
         System.out.println("--> Προσπάθεια Login με Username: [" + username + "] και Password: [" + password + "]");
         
@@ -28,25 +28,35 @@ public class UserDAO {
             
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    System.out.println("--> ΕΠΙΤΥΧΙΑ: Ο χρήστης βρέθηκε στη βάση δεδομένων!");
-                    return new Users();
+                    String role = rs.getString("role");
+                    
+                    // Έλεγχος δικαιωμάτων: Επιτρέπεται η είσοδος μόνο αν ο ρόλος είναι 'secretary'
+                    if (!"secretary".equalsIgnoreCase(role)) {
+                        System.out.println("--> ΑΠΟΡΡΙΨΗ: Ο χρήστης βρέθηκε στη βάση, αλλά δεν ανήκει στη Γραμματεία. Ρόλος: " + role);
+                        return null;
+                    }
+                    
+                    System.out.println("--> ΕΠΙΤΥΧΙΑ: Βρέθηκε έγκυρος χρήστης Γραμματείας στη βάση δεδομένων.");
+                    
+                    // Επιστροφή αντικειμένου Users συμπληρωμένου με τα στοιχεία από τη βάση για αποθήκευση στο Session
+                    return new Users(
+                        rs.getString("username"),
+                        rs.getString("name"),
+                        rs.getString("surname"),
+                        rs.getString("department")
+                    );
                 } else {
-                    System.out.println("--> ΑΠΟΤΥΧΙΑ: Η MySQL επέστρεψε 0 γραμμές για αυτά τα στοιχεία.");
+                    System.out.println("--> ΑΠΟΤΥΧΙΑ: Λάθος username ή password στη βάση δεδομένων.");
                 }
             }
         } catch (SQLException e) {
-            System.out.println("--> ΣΦΑΛΜΑ SQL: " + e.getMessage());
+            System.out.println("--> ΣΦΑΛΜΑ SQL κατά την αυθεντικοποίηση: " + e.getMessage());
             e.printStackTrace();
         }
         return null;
     }
 
-    /**
-     * Dynamically pulls all registered professors from the database 
-     * to populate UI dropdown selection components.
-     * * NOTE: If your database uses a different filtering column name 
-     * (e.g., user_type, status, etc.), adjust the WHERE clause accordingly.
-     */
+    // Ανάκτηση όλων των εγγεγραμμένων καθηγητών από τη βάση για τη συμπλήρωση των επιλογών στο UI
     public List<Professors> getAllProfessors() {
         List<Professors> professorsList = new ArrayList<>();
         
@@ -63,8 +73,7 @@ public class UserDAO {
                 String surname = rs.getString("surname");
                 String dept = rs.getString("department");
                 
-                // We pass the integer ID converted to a String inside the professorId field 
-                // so we can read it easily inside our HTML forms
+                // Μετατροπή του ID σε String για τη διευκόλυνση της διαχείρισης στις φόρμες HTML
                 Professors prof = new Professors(username, name, surname, dept, String.valueOf(id));
                 professorsList.add(prof);
             }

@@ -4,25 +4,37 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 
+// Κλάση για τη διαχείριση της σύνδεσης με τη βάση δεδομένων στο μοντέλο 3-tier (Απαίτηση 1.2).
 public class DBconnection {
 
-    // Στοιχεία σύνδεσης (Το university_db είναι η βάση που φτιάξαμε στο Workbench)
-    private static final String URL = "jdbc:mysql://localhost:3306/university_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true";
-    private static final String USER = "root"; 
-    private static final String PASSWORD = "zaq1xsw2cde3!A"; 
+    // Προκαθορισμένα στοιχεία σύνδεσης για τη βάση δεδομένων university_db
+    private static final String DEFAULT_URL = "jdbc:mysql://localhost:3306/university_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true";
+    private static final String DEFAULT_USER = "root"; 
+    private static final String DEFAULT_PASSWORD = "zaq1xsw2cde3!A"; 
 
-    public static Connection getConnection() throws SQLException {
-        Connection connection = null;
+    // Στατικό block για την εξασφάλιση της φόρτωσης του Driver της MySQL κατά την εκκίνηση της εφαρμογής
+    static {
         try {
-            // Φόρτωση του Driver
             Class.forName("com.mysql.cj.jdbc.Driver");
-            // Άνοιγμα σύνδεσης
-            connection = DriverManager.getConnection(URL, USER, PASSWORD);
+            System.out.println("--> DB Driver: Ο com.mysql.cj.jdbc.Driver φορτώθηκε επιτυχώς.");
         } catch (ClassNotFoundException e) {
-            System.out.println("Ο Driver δεν βρέθηκε στο WEB-INF/lib!");
+            System.err.println("--> ΚΡΙΣΙΜΟ ΣΦΑΛΜΑ: Ο MySQL JDBC Driver δεν εντοπίστηκε στο WEB-INF/lib!");
             e.printStackTrace();
-            throw new SQLException(e);
         }
-        return connection;
+    }
+
+    // Μέθοδος για τη δημιουργία και την επιστροφή μιας ενεργής σύνδεσης με τη βάση δεδομένων.
+    public static Connection getConnection() throws SQLException {
+        // Έλεγχος για ύπαρξη μεταβλητών περιβάλλοντος, με εναλλακτική χρήση των προκαθορισμένων τοπικών τιμών
+        String url = System.getenv("DB_URL") != null ? System.getenv("DB_URL") : DEFAULT_URL;
+        String user = System.getenv("DB_USER") != null ? System.getenv("DB_USER") : DEFAULT_USER;
+        String password = System.getenv("DB_PASS") != null ? System.getenv("DB_PASS") : DEFAULT_PASSWORD;
+
+        try {
+            return DriverManager.getConnection(url, user, password);
+        } catch (SQLException e) {
+            System.err.println("--> ΣΦΑΛΜΑ ΣΥΝΔΕΣΗΣ: Αποτυχία σύνδεσης με τη βάση δεδομένων: " + e.getMessage());
+            throw e;
+        }
     }
 }
